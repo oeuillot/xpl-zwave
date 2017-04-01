@@ -1,0 +1,25 @@
+{
+  "name": "xpl-zwave",
+  "version": "0.1",
+  "description": "XPL bridge for ZWAVE",
+  "dependencies": {
+    "commander": "^2.9.0",
+    "debug": "^2.6.3",
+    "openzwave": "latest"
+  },
+  "keywords": [
+    "XPL",
+    "xmpp",
+    "hangout"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oeuillot/xpl-zwave.git"
+  },
+  "author": "Olivier Oeuillot",
+  "license": "GPL",
+  "readmeFilename": "README.md",
+  "engines": {
+    "node": ">=6.0.0"
+  }
+}
