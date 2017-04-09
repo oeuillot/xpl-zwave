@@ -1,11 +1,11 @@
 {
   "name": "xpl-zwave",
-  "version": "0.1",
+  "version": "0.0.1",
   "description": "XPL bridge for ZWAVE",
   "dependencies": {
     "commander": "^2.9.0",
     "debug": "^2.6.3",
-    "openzwave": "latest"
+    "openzwave-shared": "latest"
   },
   "keywords": [
     "XPL",
