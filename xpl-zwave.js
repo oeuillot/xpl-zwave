@@ -28,6 +28,7 @@ if (!commander.xplSource) {
 var emulateShutters = {};
 var zwaveKeys = {};
 
+const SHUTTER_MAX = 99;
 
 commander.command('*').description("Start processing Zwave").action(() => {
 	console.log("Starting ...");
@@ -272,11 +273,10 @@ commander.command('*').description("Start processing Zwave").action(() => {
 
 		for (let comclass in n['classes']) {
 			switch (comclass) {
-				case 0x25: // COMMAND_CLASS_SWITCH_BINARY
+//				case 0x25: // COMMAND_CLASS_SWITCH_BINARY
 				case 0x26: // COMMAND_CLASS_SWITCH_MULTILEVEL
-					zwave.enablePoll(nodeid, comclass);
+					zwave.enablePoll(nodeid, comclass, 2);
 					break;
-				case "37":
 				case "38":
 					console.log("*** Enable poll for nodeid=", nodeid, "comclass=", comclass);
 					zwave.enablePoll(nodeid, comclass, 2);
@@ -357,14 +357,14 @@ commander.command('*').description("Start processing Zwave").action(() => {
 
 			let zwaveDevice = zwaveKeys[device];
 			if (!zwaveDevice) {
-				console.error("Unknown device=", device);
+				debug("Unknown device=", device);
 				return;
 			}
 
 			switch (command) {
 				case "target":
 					let value = zwaveDevice.value;
-					let nv = Math.round(parseFloat(current) / 100 * value.max);
+					let nv = Math.round(parseFloat(current) / 100 * SHUTTER_MAX);
 
 					console.log("SET VALUE nodeid=", zwaveDevice.nodeid, "comclass=", zwaveDevice.comclass, "instance=", value.instance, "index=", value.index, "value=", nv);
 
