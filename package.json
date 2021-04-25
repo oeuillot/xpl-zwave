@@ -3,9 +3,9 @@
   "version": "0.0.1",
   "description": "XPL bridge for ZWAVE",
   "dependencies": {
-    "commander": "^2.9.0",
+    "commander": "^2.16.0",
     "debug": "^2.6.3",
-    "openzwave-shared": "latest"
+    "openzwave-shared": "^1.7.2"
   },
   "keywords": [
     "XPL",
