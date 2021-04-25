@@ -42,6 +42,8 @@ const SHUTTER_MAX = 99;
 
 let dates = {};
 
+const reachableDevices = {};
+
 commander.command('*').description("Start processing Zwave").action(() => {
 	console.log("Starting ...");
 
@@ -327,262 +329,350 @@ commander.command('*').description("Start processing Zwave").action(() => {
 	});
 
 	zwave.on('node ready', (nodeid, nodeinfo) => {
-		let n = nodes[nodeid];
-		n['manufacturer'] = nodeinfo.manufacturer;
-		n['manufacturerid'] = nodeinfo.manufacturerid;
-		n['product'] = nodeinfo.product;
-		n['producttype'] = nodeinfo.producttype;
-		n['productid'] = nodeinfo.productid;
-		n['type'] = nodeinfo.type;
-		n['name'] = nodeinfo.name;
-		n['loc'] = nodeinfo.loc;
-		n['ready'] = true;
+		try {
+			let n = nodes[nodeid];
+			n['manufacturer'] = nodeinfo.manufacturer;
+			n['manufacturerid'] = nodeinfo.manufacturerid;
+			n['product'] = nodeinfo.product;
+			n['producttype'] = nodeinfo.producttype;
+			n['productid'] = nodeinfo.productid;
+			n['type'] = nodeinfo.type;
+			n['name'] = nodeinfo.name;
+			n['loc'] = nodeinfo.loc;
+			n['ready'] = true;
 
-		console.log('nodeReady node=', nodeid, 'name=', nodeinfo.name,
-			'type=', nodeinfo.type,
-			'location=', nodeinfo.loc,
-			'manufacturer=', nodeinfo.manufacturer,
-			'manufacturerId=', nodeinfo.manufacturerid,
-			'product=', nodeinfo.product,
-			'productid=', nodeinfo.productid,
-			'producttype=', nodeinfo.producttype);
+			console.log('nodeReady node=', nodeid, 'name=', nodeinfo.name,
+				'type=', nodeinfo.type,
+				'location=', nodeinfo.loc,
+				'manufacturer=', nodeinfo.manufacturer,
+				'manufacturerId=', nodeinfo.manufacturerid,
+				'product=', nodeinfo.product,
+				'productid=', nodeinfo.productid,
+				'producttype=', nodeinfo.producttype);
 
-		for (let comclass in n['classes']) {
+			for (let comclass in n['classes']) {
 
-			let values = n['classes'][comclass];
-			console.log('  * comclass=', comclass);
+				let values = n['classes'][comclass];
+				console.log('  * comclass=', comclass);
 
-			for (let idx in values) {
-				const v = values[idx];
-				console.log('    * idx=', idx, "label=", v['label'], "value=", v);
+				for (let idx in values) {
+					const v = values[idx];
+					console.log('    * idx=', idx, "label=", v['label'], "value=", v);
 
-				if (!v || typeof (v) !== 'object' || !v.value_id) {
-					continue;
-				}
+					if (!v || typeof (v) !== 'object' || !v.value_id) {
+						continue;
+					}
 
 
-				switch (comclass) {
+					switch (comclass) {
 //				case 0x25: // COMMAND_CLASS_SWITCH_BINARY
-					case 0x26: // COMMAND_CLASS_SWITCH_MULTILEVEL
-					case 0x32: // COMMAND_CLASS_SWITCH_MULTILEVEL
-					case "37":
-					case "38":
+						case 0x26: // COMMAND_CLASS_SWITCH_MULTILEVEL
+						case 0x32: // COMMAND_CLASS_SWITCH_MULTILEVEL
+						case "37":
+						case "38":
 //					case "39":
-					case "49":
-					case "50":
-						debugZwave('nodeReady', "Enable pool for nodeid=", nodeid, "comclass=", comclass);
-						zwave.enablePoll(v, comclass); //, 2, 0);
-						break;
+						case "49":
+						case "50":
+							debugZwave('nodeReady', "Enable pool for nodeid=", nodeid, "comclass=", comclass);
+							zwave.enablePoll(v, comclass); //, 2, 0);
+							break;
+					}
 				}
 			}
-		}
 
-		if (nodeid === 9) {
-			console.log("SET to 300");
+			if (nodeid === 9) {
+				console.log("SET to 300");
 // 9-112-1-51
 //			zwave.setValue(9, 112, 1, 52, 300);
 //zwave.setValue('9-112-1-51', 300);
-		}
+			}
 
-		if (nodeid === 13) {
-			console.log("SET 13 to 300");
+			if (nodeid === 13) {
+				console.log("SET 13 to 300");
 // 9-112-1-51
 //			zwave.setValue(13, 112, 1, 52, 300);
 //zwave.setValue('9-112-1-51', 300);
+			}
+
+			let device = nodeid;
+			if (deviceAliases && deviceAliases[nodeid]) {
+				device = deviceAliases[nodeid];
+			}
+			reachableDevices[device] = true;
+			xpl.sendXplTrig({
+				device: device,
+				type: "reachable",
+				current: true,
+			});
+		} catch (x) {
+			console.error(x);
 		}
 	});
 
 	zwave.on('notification', (nodeid, notif) => {
-		switch (notif) {
-			case 0:
-				debugZwave('notification', 'nodeid=', nodeid, ': message complete');
-				break;
-			case 1:
-				debugZwave('notification', 'nodeid=', nodeid, ': timeout');
-				break;
-			case 2:
-				debugZwave('notification', 'nodeid=', nodeid, ': nop');
-				break;
-			case 3:
-				debugZwave('notification', 'nodeid=', nodeid, ': node awake');
-				break;
-			case 4:
-				debugZwave('notification', 'nodeid=', nodeid, ': node sleep');
-				break;
-			case 5:
-				debugZwave('notification', 'nodeid=', nodeid, ': node dead');
-				break;
-			case 6:
-				debugZwave('notification', 'nodeid=', nodeid, ': node alive');
-				break;
-			default:
-				debugZwave('notification', "UNKNOWN notification nodeid=", nodeid);
+		try {
+			let device = nodeid;
+			if (deviceAliases && deviceAliases[nodeid]) {
+				device = deviceAliases[nodeid];
+			}
+
+			switch (notif) {
+				case 0:
+					debugZwave('notification', 'nodeid=', nodeid, ': message complete');
+					break;
+				case 1:
+					debugZwave('notification', 'nodeid=', nodeid, ': timeout');
+					break;
+				case 2:
+					debugZwave('notification', 'nodeid=', nodeid, ': nop');
+					break;
+				case 3:
+					debugZwave('notification', 'nodeid=', nodeid, ': node awake');
+					reachableDevices[device] = true;
+
+					xpl.sendXplTrig({
+						device: device,
+						type: "reachable",
+						current: true,
+					});
+					xpl.sendXplTrig({
+						device: device,
+						type: "reachable",
+						current: "awake",
+					});
+
+
+					break;
+				case 4:
+					debugZwave('notification', 'nodeid=', nodeid, ': node sleep');
+					reachableDevices[device] = false;
+
+					xpl.sendXplTrig({
+						device: device,
+						type: "reachable",
+						current: false,
+					});
+					xpl.sendXplTrig({
+						device: device,
+						type: "status",
+						current: "sleep",
+					});
+					break;
+				case 5:
+					debugZwave('notification', 'nodeid=', nodeid, ': node dead');
+					reachableDevices[device] = false;
+					xpl.sendXplTrig({
+						device: device,
+						type: "reachable",
+						current: false,
+					});
+					xpl.sendXplTrig({
+						device: device,
+						type: "status",
+						current: "dead",
+					});
+					break;
+				case 6:
+					debugZwave('notification', 'nodeid=', nodeid, ': node alive');
+					reachableDevices[device] = true;
+					xpl.sendXplTrig({
+						device: device,
+						type: "reachable",
+						current: true,
+					});
+					xpl.sendXplTrig({
+						device: device,
+						type: "status",
+						current: "alive",
+					});
+					break;
+				default:
+					debugZwave('notification', "UNKNOWN notification nodeid=", nodeid);
+			}
+		} catch (x) {
+			console.error(x);
 		}
 	});
 
 	zwave.on('scan complete', () => {
-		debugZwave("scan complete", "ZWave: Scan complete");
-		console.log("scan complete", "ZWave: Scan complete");
+		try {
+			debugZwave("scan complete", "ZWave: Scan complete");
+			console.log("scan complete", "ZWave: Scan complete");
 
-		// zwave.setValue({node_id: 12, class_id: 112, instance: 1, index: 13}, 1);
-		//zwave.setValue({node_id: 12, class_id: 112, instance: 1, index: 14}, 0);
+			{
+				let device = '1';
+				if (deviceAliases && deviceAliases[device]) {
+					device = deviceAliases[device];
+				}
+				xpl.sendXplTrig({
+					device,
+					type: "ready",
+					current: true,
+				});
+			}
+
+			// zwave.setValue({node_id: 12, class_id: 112, instance: 1, index: 13}, 1);
+			//zwave.setValue({node_id: 12, class_id: 112, instance: 1, index: 14}, 0);
 //		zwave.setValue(5, 38, 1, 0, 0);
-		/*
-		 console.log('====> scan complete, hit ^C to finish.');
+			/*
+			 console.log('====> scan complete, hit ^C to finish.');
 
-		 // set dimmer node 5 to 50%
-		 zwave.setValue({node_id: 5, class_id: 38, instance: 1, index: 0}, 0);
+			 // set dimmer node 5 to 50%
+			 zwave.setValue({node_id: 5, class_id: 38, instance: 1, index: 0}, 0);
 
-		 // Add a new device to the ZWave controller
-		 if (zwave.hasOwnProperty('beginControllerCommand')) {
-		 // using legacy mode (OpenZWave version < 1.3) - no security
-		 zwave.beginControllerCommand('AddDevice', true);
+			 // Add a new device to the ZWave controller
+			 if (zwave.hasOwnProperty('beginControllerCommand')) {
+			 // using legacy mode (OpenZWave version < 1.3) - no security
+			 zwave.beginControllerCommand('AddDevice', true);
 
-		 } else {
-		 // using new security API
-		 // set this to 'true' for secure devices eg. door locks
-		 zwave.addNode(false);
-		 }*/
+			 } else {
+			 // using new security API
+			 // set this to 'true' for secure devices eg. door locks
+			 zwave.addNode(false);
+			 }*/
 
-		xpl.on("xpl:xpl-cmnd", (message) => {
+			xpl.on("xpl:xpl-cmnd", (message) => {
 
-			if (message.bodyName !== "zwave.cmd") {
-				return;
-			}
+				if (message.bodyName !== "zwave.cmd") {
+					return;
+				}
 
-			console.log("processXplMessage:zwave.cmd", "Receive message", message);
+				console.log("processXplMessage:zwave.cmd", "Receive message", message);
 
-			debug("ZWave command=", message);
+				debug("ZWave command=", message);
 
-			switch (message.body.command || '') {
-				case 'inclusion':
-					let security = isTrue(message.body.security);
-					zwave.addNode(security);
-					xpl.sendXplTrig({
-						device: "zwave/manager",
-						type: "inclusion",
-						security
-					});
-					break;
+				switch (message.body.command || '') {
+					case 'inclusion':
+						let security = isTrue(message.body.security);
+						zwave.addNode(security);
+						xpl.sendXplTrig({
+							device: "zwave/manager",
+							type: "inclusion",
+							security
+						});
+						break;
 
-				case 'exclusion':
-					zwave.removeNode();
-					xpl.sendXplTrig({
-						device: "zwave/manager",
-						type: "exclusion"
-					});
-					break;
+					case 'exclusion':
+						zwave.removeNode();
+						xpl.sendXplTrig({
+							device: "zwave/manager",
+							type: "exclusion"
+						});
+						break;
 
-				default:
-					console.error("Unsupported command=", message);
-			}
-		});
+					default:
+						console.error("Unsupported command=", message);
+				}
+			});
 
-		xpl.on("message", (message) => {
-			debug("processXplMessage", "Receive message", message);
+			xpl.on("message", (message) => {
+				debug("processXplMessage", "Receive message", message);
 
-			if (message.bodyName !== "delabarre.command" &&
-				message.bodyName !== "x10.basic") {
+				if (message.bodyName !== "delabarre.command" &&
+					message.bodyName !== "x10.basic") {
 
 //				console.log('Ignored bodyName=>', message);
-				return;
-			}
+					return;
+				}
 
-			let body = message.body;
+				let body = message.body;
 
-			let command = body.command;
-			let device = body.device || body.unit;
-			let current = body.current;
+				let command = body.command;
+				let device = body.device || body.unit;
+				let current = body.current;
 
-			console.log('Get message  command=', command, 'device=', device, 'current=', current);
+				console.log('Get message  command=', command, 'device=', device, 'current=', current);
 
-			switch (command) {
-				case "setValue":
-					const req = /^zwave\/([\d]+)-([\d]+)-([\d]+)-([\d]+)$/.exec(device);
-					if (req) {
-						const obj = {
-							node_id: parseInt(req[1], 10),
-							class_id: parseInt(req[2], 10),
-							instance: parseInt(req[3], 10),
-							index: parseInt(req[4], 10)
-						};
+				switch (command) {
+					case "setValue":
+						const req = /^zwave\/([\d]+)-([\d]+)-([\d]+)-([\d]+)$/.exec(device);
+						if (req) {
+							const obj = {
+								node_id: parseInt(req[1], 10),
+								class_id: parseInt(req[2], 10),
+								instance: parseInt(req[3], 10),
+								index: parseInt(req[4], 10)
+							};
 
-						if (current === 'true') {
-							current = true;
+							if (current === 'true') {
+								current = true;
 
-						} else if (current === 'false') {
-							current = false;
+							} else if (current === 'false') {
+								current = false;
 
-						} else if (/^[\d\.]+$/.exec(current)) {
-							current = parseFloat(current);
+							} else if (/^[\d\.]+$/.exec(current)) {
+								current = parseFloat(current);
+							}
+
+							console.log("command", "[n-c-i-i] SET VALUE obj=", obj, "value=", current, typeof (current));
+
+							zwave.setValue(obj.node_id, obj.class_id, obj.instance, obj.index, current);
+							return;
 						}
+						break;
+				}
 
-						console.log("command", "[n-c-i-i] SET VALUE obj=", obj, "value=", current, typeof (current));
+				let zwaveDevice = zwaveKeys[device];
+				console.log('Map device name=', device, '=> device=', zwaveDevice);
+				if (!zwaveDevice && body.command) {
+					let newDevice = device + '/' + body.command;
+					zwaveDevice = zwaveKeys[newDevice];
+					console.log('Map device with command name=', newDevice, '=> device=', zwaveDevice);
+					if (zwaveDevice) {
+						device = newDevice;
+					}
+				}
 
-						zwave.setValue(obj.node_id, obj.class_id, obj.instance, obj.index, current);
+				if (!zwaveDevice) {
+					console.error("Unknown device=", device, 'aliases=', zwaveKeys);
+					return;
+				}
+
+				switch (command) {
+					case "status":
+					case "enabled": {
+						let value = zwaveDevice.value;
+						let nv = isTrue(current) ? 1 : 0;
+
+						console.log("command", "[enabled] SET VALUE nodeid=", zwaveDevice.nodeid, "comclass=", zwaveDevice.comclass, "instance=", value.instance, "index=", value.index, "value=", nv);
+
+						zwave.setValue(zwaveDevice.nodeid, zwaveDevice.comclass, value.instance, value.index, nv);
 						return;
 					}
-					break;
-			}
 
-			let zwaveDevice = zwaveKeys[device];
-			console.log('Map device name=', device, '=> device=', zwaveDevice);
-			if (!zwaveDevice && body.command) {
-				let newDevice = device + '/' + body.command;
-				zwaveDevice = zwaveKeys[newDevice];
-				console.log('Map device with command name=', newDevice, '=> device=', zwaveDevice);
-				if (zwaveDevice) {
-					device = newDevice;
-				}
-			}
+					case "setValue":
+					case "value": {
+						let value = zwaveDevice.value;
+						let nv = parseFloat(current);
 
-			if (!zwaveDevice) {
-				console.error("Unknown device=", device, 'aliases=', zwaveKeys);
-				return;
-			}
+						console.log("command", "[value] SET VALUE nodeid=", zwaveDevice.nodeid, "comclass=", zwaveDevice.comclass, "instance=", value.instance, "index=", value.index, "value=", nv);
 
-			switch (command) {
-				case "status":
-				case "enabled": {
-					let value = zwaveDevice.value;
-					let nv = isTrue(current) ? 1 : 0;
+						zwave.setValue(zwaveDevice.nodeid, zwaveDevice.comclass, value.instance, value.index, nv);
+						return;
+					}
 
-					console.log("command", "[enabled] SET VALUE nodeid=", zwaveDevice.nodeid, "comclass=", zwaveDevice.comclass, "instance=", value.instance, "index=", value.index, "value=", nv);
+					case "target": {
+						let value = zwaveDevice.value;
+						let nv = Math.round(parseFloat(current) / 100 * SHUTTER_MAX);
 
-					zwave.setValue(zwaveDevice.nodeid, zwaveDevice.comclass, value.instance, value.index, nv);
-					return;
-				}
+						console.log("command", "[target] SET VALUE nodeid=", zwaveDevice.nodeid, "comclass=", zwaveDevice.comclass, "instance=", value.instance, "index=", value.index, "value=", nv);
 
-				case "setValue":
-				case "value": {
-					let value = zwaveDevice.value;
-					let nv = parseFloat(current);
+						zwave.setValue(zwaveDevice.nodeid, zwaveDevice.comclass, value.instance, value.index, nv);
 
-					console.log("command", "[value] SET VALUE nodeid=", zwaveDevice.nodeid, "comclass=", zwaveDevice.comclass, "instance=", value.instance, "index=", value.index, "value=", nv);
-
-					zwave.setValue(zwaveDevice.nodeid, zwaveDevice.comclass, value.instance, value.index, nv);
-					return;
+						xpl.sendXplTrig({
+							device: device,
+							type: "target",
+							current: current,
+							units: "%"
+						});
+						break;
+					}
 				}
 
-				case "target": {
-					let value = zwaveDevice.value;
-					let nv = Math.round(parseFloat(current) / 100 * SHUTTER_MAX);
-
-					console.log("command", "[target] SET VALUE nodeid=", zwaveDevice.nodeid, "comclass=", zwaveDevice.comclass, "instance=", value.instance, "index=", value.index, "value=", nv);
-
-					zwave.setValue(zwaveDevice.nodeid, zwaveDevice.comclass, value.instance, value.index, nv);
-
-					xpl.sendXplTrig({
-						device: device,
-						type: "target",
-						current: current,
-						units: "%"
-					});
-					break;
-				}
-			}
-
-		});
+			});
+		} catch (x) {
+			console.error(x);
+		}
 	});
 
 	zwave.on('controller command', (r, s) => {
@@ -593,10 +683,27 @@ commander.command('*').description("Start processing Zwave").action(() => {
 	process.on('SIGINT', function () {
 		console.log('disconnecting...');
 		zwave.disconnect(commander.serialPort);
-		process.exit();
+
+		console.log('Shutdown XPL units');
+
+		for (let key in reachableDevices) {
+			if (!reachableDevices[key]) {
+				continue;
+			}
+			reachableDevices[key] = false;
+
+			console.log('Shutdown', key);
+			xpl.sendXplTrig({
+				device: key,
+				type: "reachable",
+				current: false,
+			});
+		}
+		setTimeout(() => {
+			process.exit();
+		}, 3000);
 	});
-})
-;
+});
 
 function normalizeShutterValue(value) {
 	let v = value.value;
